@@ -1,5 +1,16 @@
+# Python
 .venv/
+venv/
 __pycache__/
+*.py[cod]
+.env
+
+# Node
 node_modules/
 dist/
+*.local
+
+# Editors / OS
 .DS_Store
+.idea/
+.vscode/
