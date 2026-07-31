@@ -1,7 +1,15 @@
-fastapi
-uvicorn
-yfinance
-ccxt
-openai
-pandas
-scikit-learn
+# Core API
+fastapi>=0.115
+uvicorn[standard]>=0.34
+pydantic>=2.7
+
+# Market data + analysis
+yfinance>=0.2.60
+curl_cffi>=0.7
+pandas>=2.2
+numpy>=1.26
+
+# Optional: enables conversational replies in the assistant.
+# Without it (or without ANTHROPIC_API_KEY) the assistant answers from the
+# computed indicators directly, and everything still works.
+anthropic>=0.60
