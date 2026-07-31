@@ -1,5 +1,7 @@
 /** Thin API client. Requests go through the Vite proxy, so no origin config. */
 
+import { IS_DEMO, demoApi } from './demo.js'
+
 const BASE = '/api/v1'
 
 class ApiError extends Error {
@@ -40,7 +42,7 @@ async function request(path, { signal, method = 'GET', body } = {}) {
   return res.json()
 }
 
-export const api = {
+const live = {
   meta: (signal) => request('/meta', { signal }),
   search: (q, signal) => request(`/search?q=${encodeURIComponent(q)}`, { signal }),
   quote: (symbol, signal) => request(`/quote/${encodeURIComponent(symbol)}`, { signal }),
@@ -56,4 +58,22 @@ export const api = {
   chat: (payload, signal) => request('/chat', { method: 'POST', body: payload, signal }),
 }
 
-export { ApiError }
+/**
+ * In a static build there is no backend to reach, so calls resolve from a
+ * frozen snapshot of real engine output instead. Same signatures either way,
+ * so nothing above this line knows the difference.
+ */
+const demo = {
+  meta: () => demoApi.meta(),
+  search: (q) => demoApi.search(q),
+  quote: (symbol) => demoApi.quote(symbol),
+  news: (symbol) => demoApi.news(symbol),
+  overview: () => demoApi.overview(),
+  watchlist: () => demoApi.watchlist(),
+  analysis: (symbol, range, capital) => demoApi.analysis(symbol, range, capital),
+  chat: (payload) => demoApi.chat(payload),
+}
+
+export const api = IS_DEMO ? demo : live
+
+export { ApiError, IS_DEMO }

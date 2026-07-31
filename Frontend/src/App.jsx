@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api } from './lib/api.js'
+import { IS_DEMO, api } from './lib/api.js'
 import { useCvd, useStored, useTheme } from './hooks/usePrefs.js'
 import { ACTION_LABEL, ACTION_VERB, actionColor } from './lib/format.js'
 import { CardShell, ErrorNote, SkeletonRows, Spinner } from './components/Primitives.jsx'
@@ -13,13 +13,15 @@ import BacktestPanel from './components/BacktestPanel.jsx'
 import Assistant from './components/Assistant.jsx'
 import NewsList from './components/NewsList.jsx'
 
-const RANGES = ['1D', '5D', '1M', '3M', '6M', '1Y', '5Y', 'MAX']
+const ALL_RANGES = ['1D', '5D', '1M', '3M', '6M', '1Y', '5Y', 'MAX']
 const REFRESH_MS = 30_000
 
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme()
   const { cvd, toggle: toggleCvd } = useCvd()
 
+  // A static build only carries the ranges that were frozen, so the picker
+  // reflects what actually exists rather than offering dead tabs.
   const [symbol, setSymbol] = useStored('ta.symbol', 'AAPL')
   const [range, setRange] = useStored('ta.range', '6M')
   const [capital, setCapital] = useStored('ta.capital', 10000)
@@ -42,6 +44,8 @@ export default function App() {
   const [nonce, setNonce] = useState(0)
 
   const refresh = useCallback(() => setNonce((n) => n + 1), [])
+
+  const RANGES = meta?.ranges?.length ? meta.ranges.map((r) => r.key) : ALL_RANGES
 
   // ---- Static metadata, once. ----
   useEffect(() => {
@@ -135,7 +139,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [setRange])
+  }, [setRange, RANGES])
 
   const isSaved = saved.includes(symbol)
   const toggleSaved = useCallback(() => {
@@ -178,25 +182,31 @@ export default function App() {
           </div>
 
           <div className="ml-auto flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setLive((v) => !v)}
-              aria-pressed={live}
-              className="btn"
-              title={live ? `Refreshing every ${REFRESH_MS / 1000}s` : 'Turn on auto-refresh'}
-              style={live ? { color: 'var(--up)', borderColor: 'var(--up)' } : undefined}
-            >
-              <span
-                aria-hidden="true"
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: live ? 'var(--up)' : 'var(--ink-3)' }}
-              />
-              Live
-            </button>
+            {/* Polling and manual refresh only mean something against a live
+                backend; in a static build they would just re-read a file. */}
+            {!IS_DEMO && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setLive((v) => !v)}
+                  aria-pressed={live}
+                  className="btn"
+                  title={live ? `Refreshing every ${REFRESH_MS / 1000}s` : 'Turn on auto-refresh'}
+                  style={live ? { color: 'var(--up)', borderColor: 'var(--up)' } : undefined}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="inline-block h-1.5 w-1.5 rounded-full"
+                    style={{ background: live ? 'var(--up)' : 'var(--ink-3)' }}
+                  />
+                  Live
+                </button>
 
-            <button type="button" onClick={refresh} className="btn" aria-label="Refresh data now" title="Refresh now">
-              {loadingAnalysis ? <Spinner size={14} /> : <span aria-hidden="true">⟳</span>}
-            </button>
+                <button type="button" onClick={refresh} className="btn" aria-label="Refresh data now" title="Refresh now">
+                  {loadingAnalysis ? <Spinner size={14} /> : <span aria-hidden="true">⟳</span>}
+                </button>
+              </>
+            )}
 
             <button
               type="button"
@@ -225,6 +235,29 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {IS_DEMO && (
+        <div
+          className="border-b px-4 py-2 text-center text-[12px]"
+          style={{ background: 'var(--accent-wash)', borderColor: 'var(--line)', color: 'var(--ink-2)' }}
+        >
+          <strong className="font-semibold" style={{ color: 'var(--ink)' }}>
+            Static demo.
+          </strong>{' '}
+          Every number here is real output from the signal engine, frozen
+          {meta?.generated_at ? ` on ${new Date(meta.generated_at).toLocaleDateString()}` : ''} — so
+          prices will not move and intraday ranges are unavailable.{' '}
+          <a
+            href="https://github.com/Isaiahchonchoramirez/ai-trade-assistant"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline underline-offset-2"
+            style={{ color: 'var(--accent)' }}
+          >
+            Run it locally for live data →
+          </a>
+        </div>
+      )}
 
       <div className="mx-auto grid max-w-[1560px] gap-4 px-4 py-4 lg:grid-cols-[264px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-[60px] lg:self-start">

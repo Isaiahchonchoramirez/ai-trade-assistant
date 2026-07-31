@@ -2,7 +2,11 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+// `npm run build:demo` produces a backend-free build that reads a frozen
+// snapshot instead of calling the API, for hosting on a static server.
+// A relative base keeps it working at whatever path it ends up served from.
 export default defineConfig({
+  base: process.env.VITE_DEMO_BASE || '/',
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
