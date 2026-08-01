@@ -56,6 +56,10 @@ const live = {
       { signal },
     ),
   chat: (payload, signal) => request('/chat', { method: 'POST', body: payload, signal }),
+  assistantStatus: (signal) => request('/assistant', { signal }),
+  connectClaude: (key, signal) =>
+    request('/assistant/connect', { method: 'POST', body: { key }, signal }),
+  disconnectClaude: (signal) => request('/assistant/disconnect', { method: 'POST', signal }),
 }
 
 /**
@@ -72,6 +76,11 @@ const demo = {
   watchlist: () => demoApi.watchlist(),
   analysis: (symbol, range, capital) => demoApi.analysis(symbol, range, capital),
   chat: (payload) => demoApi.chat(payload),
+  // A static demo has no server to hold a credential, so connecting is only
+  // offered in the real app.
+  assistantStatus: () => demoApi.meta().then((m) => m.assistant),
+  connectClaude: () => Promise.reject(new ApiError('Not available in the demo.', 400)),
+  disconnectClaude: () => Promise.reject(new ApiError('Not available in the demo.', 400)),
 }
 
 export const api = IS_DEMO ? demo : live

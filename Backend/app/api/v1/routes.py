@@ -278,6 +278,35 @@ class ChatRequest(BaseModel):
     history: list[ChatTurn] = Field(default_factory=list)
 
 
+class KeyRequest(BaseModel):
+    key: str = Field(..., max_length=400)
+
+
+@router.get("/assistant")
+def assistant_status() -> dict[str, Any]:
+    return assistant.engine_status()
+
+
+@router.post("/assistant/connect")
+def assistant_connect(payload: KeyRequest) -> dict[str, Any]:
+    """Verify a key and store it locally.
+
+    The key is never echoed back and never logged — the response says only
+    whether it worked.
+    """
+    ok, message = assistant.verify_key(payload.key)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    assistant.save_key(payload.key)
+    return {"message": message, **assistant.engine_status()}
+
+
+@router.post("/assistant/disconnect")
+def assistant_disconnect() -> dict[str, Any]:
+    assistant.clear_key()
+    return {"message": "Disconnected.", **assistant.engine_status()}
+
+
 @router.post("/chat")
 def chat(payload: ChatRequest) -> dict[str, Any]:
     view, spec = _load(payload.symbol, payload.range)

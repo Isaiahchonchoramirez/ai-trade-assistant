@@ -32,6 +32,7 @@ export default function App() {
   const [tab, setTab] = useState('signal')
 
   const [meta, setMeta] = useState(null)
+  const [engine, setEngine] = useState(null)
   const [analysis, setAnalysis] = useState(null)
   const [analysisError, setAnalysisError] = useState(null)
   const [loadingAnalysis, setLoadingAnalysis] = useState(true)
@@ -50,7 +51,13 @@ export default function App() {
   // ---- Static metadata, once. ----
   useEffect(() => {
     const controller = new AbortController()
-    api.meta(controller.signal).then(setMeta).catch(() => {})
+    api
+      .meta(controller.signal)
+      .then((m) => {
+        setMeta(m)
+        setEngine(m.assistant)
+      })
+      .catch(() => {})
     return () => controller.abort()
   }, [])
 
@@ -398,21 +405,21 @@ export default function App() {
                 title="Ask about this symbol"
                 bodyClass="p-0"
                 action={
-                  meta?.assistant && (
+                  engine && (
                     <span
                       className="chip"
                       style={{
-                        color: meta.assistant.claude_available ? 'var(--accent)' : 'var(--ink-3)',
+                        color: engine.claude_available ? 'var(--accent)' : 'var(--ink-3)',
                         background: 'var(--surface-2)',
                       }}
-                      title={meta.assistant.detail}
+                      title={engine.detail}
                     >
-                      {meta.assistant.claude_available ? 'Claude' : 'Grounded'}
+                      {engine.claude_available ? 'Claude' : 'Grounded'}
                     </span>
                   )
                 }
               >
-                <Assistant symbol={symbol} range={range} engine={meta?.assistant} />
+                <Assistant symbol={symbol} range={range} engine={engine} onEngineChange={setEngine} />
               </CardShell>
 
               <CardShell title={`${symbol} headlines`} bodyClass="px-4 pb-2 pt-1">

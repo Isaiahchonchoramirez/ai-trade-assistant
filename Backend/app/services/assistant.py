@@ -17,6 +17,8 @@ from __future__ import annotations
 import logging
 import os
 import re
+import sys
+from pathlib import Path
 from typing import Any
 
 log = logging.getLogger(__name__)
@@ -293,11 +295,102 @@ def respond_locally(question: str, ctx: dict) -> str:
 # --------------------------------------------------------------------------
 
 
+def _key_file() -> Path:
+    """Where a key entered through the UI is kept.
+
+    Packaged users have no shell to export an environment variable in, so the
+    app needs somewhere of its own. Platform-conventional, and outside the
+    install directory so an uninstall or upgrade does not silently take the
+    key with it.
+    """
+    if sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support" / "Trade Assistant"
+    elif os.name == "nt":
+        base = Path(os.environ.get("APPDATA", Path.home())) / "TradeAssistant"
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "trade-assistant"
+    return base / "anthropic.key"
+
+
+def load_key() -> str | None:
+    """The active credential: environment first, then whatever the UI stored."""
+    for var in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        value = os.environ.get(var)
+        if value and value.strip():
+            return value.strip()
+    try:
+        stored = _key_file().read_text().strip()
+        return stored or None
+    except OSError:
+        return None
+
+
+def key_source() -> str | None:
+    for var in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        if os.environ.get(var, "").strip():
+            return "environment"
+    try:
+        if _key_file().read_text().strip():
+            return "app"
+    except OSError:
+        pass
+    if os.path.isdir(os.path.expanduser("~/.config/anthropic")):
+        return "cli-profile"
+    return None
+
+
+def save_key(key: str) -> None:
+    path = _key_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(key.strip())
+    # Owner-only: this is a credential sitting on a shared filesystem.
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
+
+
+def clear_key() -> None:
+    try:
+        _key_file().unlink()
+    except OSError:
+        pass
+
+
+def verify_key(key: str) -> tuple[bool, str]:
+    """Check a key really works, without spending tokens on it.
+
+    Listing models is an authenticated call that bills nothing, so the user
+    gets a definitive yes/no rather than discovering the key is wrong on their
+    first real question.
+    """
+    key = (key or "").strip()
+    if not key:
+        return False, "Paste a key first."
+    if not key.startswith("sk-ant-"):
+        return False, "That does not look like an Anthropic key — they start with “sk-ant-”."
+
+    try:
+        import anthropic
+    except ImportError:
+        return False, "The anthropic package is not installed in this environment."
+
+    try:
+        anthropic.Anthropic(api_key=key).models.list(limit=1)
+    except Exception as exc:
+        name = type(exc).__name__
+        if "Authentication" in name or "PermissionDenied" in name:
+            return False, "That key was rejected. Check you copied all of it."
+        if "APIConnection" in name:
+            return False, "Could not reach Anthropic — check your internet connection."
+        log.info("key verification failed: %s", exc)
+        return False, "Could not verify that key. Try again in a moment."
+
+    return True, "Connected."
+
+
 def _claude_available() -> bool:
-    """An Anthropic credential can come from an env var or a stored profile."""
-    if os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"):
-        return True
-    return os.path.isdir(os.path.expanduser("~/.config/anthropic"))
+    return load_key() is not None or os.path.isdir(os.path.expanduser("~/.config/anthropic"))
 
 
 def _compact_context(ctx: dict) -> str:
@@ -343,8 +436,9 @@ def respond_with_claude(question: str, ctx: dict, history: list[dict] | None = N
         log.info("anthropic package not installed; using the local responder")
         return None
 
+    key = load_key()
     try:
-        client = anthropic.Anthropic()
+        client = anthropic.Anthropic(api_key=key) if key else anthropic.Anthropic()
     except Exception as exc:
         log.info("no Anthropic credential available (%s)", exc)
         return None
@@ -424,13 +518,18 @@ def engine_status() -> dict[str, Any]:
         installed = True
     except ImportError:
         installed = False
-    ready = installed and _claude_available()
+    source = key_source()
+    ready = installed and source is not None
     return {
         "claude_available": ready,
         "engine": "claude" if ready else "grounded",
+        "can_connect": installed,
+        "key_source": source,
+        "model": MODEL,
+        "console_url": "https://console.anthropic.com/settings/keys",
         "detail": (
             f"Answers generated by {MODEL}, grounded on the computed indicators."
             if ready
-            else "Answers computed directly from the live indicators. Set ANTHROPIC_API_KEY for conversational replies."
+            else "Answers are computed directly from the live indicators, so they can never invent a number."
         ),
     }

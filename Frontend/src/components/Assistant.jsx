@@ -39,7 +39,7 @@ function AnswerBody({ text }) {
   )
 }
 
-export default function Assistant({ symbol, range, engine }) {
+export default function Assistant({ symbol, range, engine, onEngineChange }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -158,10 +158,139 @@ export default function Assistant({ symbol, range, engine }) {
         </button>
       </form>
 
-      {engine && (
-        <p className="px-4 pb-2.5 text-[10.5px] leading-snug" style={{ color: 'var(--ink-3)' }}>
-          {engine.detail}
-        </p>
+      {engine && <ConnectClaude engine={engine} onChange={onEngineChange} />}
+    </div>
+  )
+}
+
+/**
+ * The engine footnote, plus an inline way to connect Claude.
+ *
+ * A packaged user has no shell to export an environment variable in, so the
+ * key goes in here instead — verified against the API before it is kept, and
+ * never sent back to the browser once stored.
+ */
+function ConnectClaude({ engine, onChange }) {
+  const [open, setOpen] = useState(false)
+  const [key, setKey] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const keyRef = useRef(null)
+
+  useEffect(() => {
+    if (open) keyRef.current?.focus()
+  }, [open])
+
+  const connect = async (e) => {
+    e.preventDefault()
+    if (!key.trim() || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      const status = await api.connectClaude(key.trim())
+      setKey('')
+      setOpen(false)
+      onChange?.(status)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const disconnect = async () => {
+    setBusy(true)
+    try {
+      onChange?.(await api.disconnectClaude())
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (engine.claude_available) {
+    return (
+      <p className="px-4 pb-2.5 text-[10.5px] leading-snug" style={{ color: 'var(--ink-3)' }}>
+        {engine.detail}{' '}
+        {engine.key_source === 'app' && (
+          <button
+            type="button"
+            onClick={disconnect}
+            disabled={busy}
+            className="underline underline-offset-2 hover:opacity-80"
+          >
+            Disconnect
+          </button>
+        )}
+      </p>
+    )
+  }
+
+  return (
+    <div className="px-4 pb-2.5">
+      <p className="text-[10.5px] leading-snug" style={{ color: 'var(--ink-3)' }}>
+        {engine.detail}{' '}
+        {engine.can_connect && !open && (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="font-semibold underline underline-offset-2"
+            style={{ color: 'var(--accent)' }}
+          >
+            Connect Claude for conversational replies →
+          </button>
+        )}
+      </p>
+
+      {open && (
+        <form onSubmit={connect} className="mt-2 rounded-lg p-2.5" style={{ background: 'var(--surface-2)' }}>
+          <label className="block text-[10.5px] font-semibold" style={{ color: 'var(--ink-2)' }}>
+            Paste an Anthropic API key
+          </label>
+          <div className="mt-1.5 flex gap-1.5">
+            <input
+              ref={keyRef}
+              type="password"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="sk-ant-…"
+              autoComplete="off"
+              spellCheck="false"
+              className="min-w-0 flex-1 rounded-md px-2 py-1.5 font-mono text-[11px] outline-none"
+              style={{ background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--line)' }}
+            />
+            <button type="submit" className="btn btn-primary !px-2.5 !py-1 !text-[11px]" disabled={busy || !key.trim()}>
+              {busy ? <Spinner size={11} /> : 'Connect'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setError(null); setKey('') }}
+              className="btn !px-2 !py-1 !text-[11px]"
+            >
+              Cancel
+            </button>
+          </div>
+
+          {error && (
+            <p className="mt-1.5 text-[10.5px]" role="alert" style={{ color: 'var(--down)' }}>
+              {error}
+            </p>
+          )}
+
+          <p className="mt-1.5 text-[10px] leading-snug" style={{ color: 'var(--ink-3)' }}>
+            Stored on this computer only, readable just by you — never sent anywhere but Anthropic.{' '}
+            <a
+              href={engine.console_url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline underline-offset-2"
+              style={{ color: 'var(--accent)' }}
+            >
+              Get a key
+            </a>
+          </p>
+        </form>
       )}
     </div>
   )
