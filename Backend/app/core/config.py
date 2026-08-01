@@ -74,6 +74,9 @@ class Settings:
     #: Parallelism for the batched endpoints. yfinance calls are IO-bound.
     max_workers: int = int(os.environ.get("MAX_WORKERS", "8"))
 
+    #: Explicit path to a built frontend. Empty means auto-detect — see main.py.
+    static_dir: str = os.environ.get("STATIC_DIR", "")
+
     disclaimer: str = (
         "Educational technical analysis, not financial advice. Signals describe "
         "what indicators say about past price action — they do not predict the "

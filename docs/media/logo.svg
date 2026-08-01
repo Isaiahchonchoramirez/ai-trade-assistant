@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="AI Trade Assistant">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#12a512"/>
+      <stop offset="1" stop-color="#0a8a0a"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="22" fill="url(#g)"/>
+  <!-- Two candles and a breakout line: the signal, in miniature. -->
+  <g stroke="#ffffff" stroke-linecap="round" fill="none">
+    <g opacity=".45" stroke-width="4">
+      <path d="M30 34v28"/>
+      <path d="M48 44v22"/>
+    </g>
+    <path d="M22 66l14-16 12 10 26-28" stroke-width="6.5" stroke-linejoin="round"/>
+    <path d="M62 32h12v12" stroke-width="6.5" stroke-linejoin="round"/>
+  </g>
+</svg>

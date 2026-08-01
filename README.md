@@ -1,49 +1,83 @@
+<div align="center">
+
+<img src="docs/media/logo.svg" width="76" alt="">
+
 # AI Trade Assistant
 
-A market dashboard that answers one question: **when does money go in, and when does it come out?**
+**When money goes in. When it comes out.**
 
-It pulls live price history, computes seven independent technical factors, combines them into a
-single score, turns that score into an action with concrete entry/stop/target levels — then shows
-how that exact strategy would have performed historically, against simply buying and holding.
+Seven technical factors, scored and explained — then backtested against buy-and-hold
+so you can see whether the logic ever actually worked.
+
+[![Download](https://img.shields.io/badge/Download-v1.0.0%20·%20free-0ca30c?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Isaiahchonchoramirez/ai-trade-assistant/releases/latest)
+[![Live demo](https://img.shields.io/badge/Live%20demo-try%20it%20now-2a78d6?style=for-the-badge)](https://isaiahchonchoramirez.github.io/isaiahramirezdev/trade-assistant/)
+
+<sub>Python 3.10+ · no API keys · no account · MIT</sub>
+
+<br>
+
+<img src="docs/media/walkthrough.gif" width="880" alt="Picking a symbol, reading the signal breakdown, and opening the backtest">
+
+</div>
 
 ---
 
-## Quick start
+## Get it running
 
-Two processes. Backend first.
+**Download and double-click.** No build step, no Node, no configuration.
+
+<div align="center">
+
+### [⬇ Download v1.0.0 (180 KB)](https://github.com/Isaiahchonchoramirez/ai-trade-assistant/releases/latest)
+
+</div>
+
+| Platform | What to do |
+|---|---|
+| **macOS** | Unzip → double-click `Start Trade Assistant.command`<br><sub>If macOS blocks it: right-click → Open → Open.</sub> |
+| **Windows** | Unzip → double-click `start.bat` |
+| **Linux** | Unzip → `./start.sh` |
+
+First run takes about a minute while it builds its own environment. After that it
+starts in a couple of seconds and opens your browser automatically. You need
+[Python 3.10+](https://www.python.org/downloads/) and an internet connection —
+nothing else.
+
+<details>
+<summary><b>Or run from source</b></summary>
 
 ```bash
-# 1. Backend — http://127.0.0.1:8000
-python3 -m venv .venv                        # first time only
-.venv/bin/pip install -r Backend/Requirements.txt
+git clone https://github.com/Isaiahchonchoramirez/ai-trade-assistant.git
+cd ai-trade-assistant
+python3 run.py          # does everything: venv, deps, server, browser
+```
+
+For frontend development with hot reload, run the two halves separately:
+
+```bash
+# terminal 1 — API on :8000
 cd Backend && ../.venv/bin/uvicorn app.main:app --reload --port 8000
+
+# terminal 2 — Vite on :5173, proxying /api to the backend
+cd Frontend && npm install && npm run dev
 ```
 
-```bash
-# 2. Frontend — http://localhost:5173
-cd Frontend
-npm install                                  # first time only
-npm run dev
-```
-
-Open the URL Vite prints. No API keys, no accounts, no configuration — market data comes from
-Yahoo Finance via `yfinance`, and the Vite dev server proxies `/api` to the backend, so there is
-no CORS setup either.
-
-> If port 5173 is taken Vite picks the next free one and prints it; the proxy follows along.
+</details>
 
 ---
 
-## What it does
+## What it actually does
+
+<img src="docs/media/dashboard-dark.jpg" width="100%" alt="Dashboard showing the market overview, watchlist and candlestick chart">
 
 ### The signal
 
-Seven factors each score the tape from −1 (bearish) to +1 (bullish). They combine by weight into
-a composite from −100 to +100:
+Seven factors each read the tape independently, scoring −1 (bearish) to +1 (bullish),
+then combine by weight into one number from −100 to +100:
 
-| Factor | Weight | What it measures |
+| Factor | Weight | Reads |
 |---|---:|---|
-| Trend structure | 22 | Price vs the 50- and 200-period averages, and whether the 50 is over the 200 |
+| Trend structure | 22 | Price against the 50- and 200-period averages, and whether the 50 is over the 200 |
 | MACD momentum | 16 | Histogram size, and whether it is expanding |
 | Moving-average cross | 14 | Gap between the 12- and 26-period EMAs |
 | RSI | 14 | Momentum, faded back at genuine extremes |
@@ -51,162 +85,129 @@ a composite from −100 to +100:
 | Volume & money flow | 12 | Whether volume confirms the move |
 | Bollinger position | 10 | Mean reversion — the brake that stops the score chasing an extended move |
 
-The composite maps to an action: **≥ +45** strong buy, **≥ +18** buy, **≤ −18** sell, **≤ −45**
-strong sell, otherwise hold. Confidence blends how far the score sits from neutral with how much
-of the factor weight actually agrees with its direction — so a +30 where every factor points the
-same way scores higher than a +30 that is two factors fighting five.
+That maps to an action — **≥ +45** strong buy, **≥ +18** buy, **≤ −18** sell,
+**≤ −45** strong sell — with an entry, a protective stop 1.8 ATR away, and targets at
+1.5× and 2.5× the resulting risk.
 
-Every factor appears in the UI with its own contribution and a plain-English reason. Nothing is a
-black box.
+**Every factor shows its own contribution and a plain-English reason.** Nothing is a
+black box, and the panel leads with the verb — *Money in*, *Money out*, *Stay put* —
+rather than jargon.
 
-### The levels
-
-Stops sit 1.8 ATR from entry — far enough that ordinary noise will not trigger them — then get
-pulled to just beyond the nearest swing low when one falls in a sensible range. Targets are 1.5×
-and 2.5× the resulting risk.
+<img src="docs/media/signal-panel.jpg" width="100%" alt="Signal panel with confidence gauge, composite score, trade levels and the seven-factor breakdown">
 
 ### The backtest
 
-The same scoring code that produces the live signal is replayed over the visible window. Two
-rules keep it honest:
+The same scoring code is replayed bar by bar over history. Two rules keep it honest:
 
-1. **No lookahead.** A signal computed from bar *i*'s close is acted on at bar *i+1*'s open.
-2. **Costs are real.** Every fill pays 5 bps of commission and slippage, and each position carries
-   a 2.5 ATR stop checked against the bar's low — a gap below the stop fills at the open, not at
-   the stop.
+1. **No lookahead.** A signal computed from bar *i*'s close is acted on at bar *i+1*'s
+   open — you could not have traded a close you hadn't seen.
+2. **Costs are real.** Every fill pays 5 bps of commission and slippage, and a 2.5 ATR
+   stop is checked against the bar's low. A gap below the stop fills at the *open*, not
+   at the stop, because the market never traded there.
 
-Results sit next to buy-and-hold on total return, annualised return, worst drawdown, Sharpe, and
-time invested, because return alone is a bad scorecard. **On most large-cap names buy-and-hold
-wins on raw return while the strategy wins on drawdown.** The app shows that rather than hiding
-it.
-
-Confidence in the backtest is graded by completed round trips: under 10 and the panel says so
-outright.
+Results sit next to buy-and-hold on return, drawdown, Sharpe and time invested, with a
+✓ on whichever side wins each measure. **On most large caps buy-and-hold wins on raw
+return and the strategy wins on drawdown** — the app shows that rather than hiding it,
+and grades its own evidence: under ten round trips it tells you the sample can't
+separate an edge from luck.
 
 ### The assistant
 
-Ask in plain language — *"why that signal?"*, *"what's my risk?"*, *"how much should I buy?"*
-Answers are computed from the same indicator values shown on the page.
-
-By default this runs on a **grounded responder**: no API key, no network call, deterministic, and
-incapable of inventing a number. If an Anthropic credential is present (`ANTHROPIC_API_KEY`, or a
-profile from `ant auth login`), the same computed data goes to Claude for open-ended questions
-instead, under a system prompt that forbids stating any figure absent from that data. If Claude is
-unavailable, rate-limited, or declines, it falls back silently. The badge above the chat input
-says which engine answered.
-
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...   # entirely optional
-```
-
----
-
-## Using it
-
-| | |
-|---|---|
-| `/` | Focus search |
-| `1`–`8` | Switch range (1D → MAX) |
-| ★ | Add or remove the current symbol from the watchlist |
-| **Live** | Auto-refresh every 30s, paused while the tab is hidden |
-| ◑ | Colourblind-safe palette |
-| ☀ / ☾ | Light / dark theme |
-
-Search covers equities, ETFs, indices (`^GSPC`), crypto (`BTC-USD`), FX (`EURUSD=X`) and futures
-(`GC=F`) — anything Yahoo Finance resolves.
-
-Watchlist, theme, range and starting capital persist in `localStorage`.
+Ask in plain language — *why that signal?*, *what's my risk?*, *how much should I buy?*
+Answers are computed from the same indicator values on screen, so it **cannot invent a
+number**. No API key needed. Set `ANTHROPIC_API_KEY` and open-ended questions route
+through Claude instead, grounded on the same data.
 
 ---
 
 ## Design notes
 
-**Colour is never the only signal.** The default green-up / red-down convention fails a
-deuteranopia check badly: the measured separation between `#0ca30c` and `#d03b3b` is ΔE 4.1, where
-8 is the floor. Rather than abandon the convention every trader reads instinctively, every value
-in the app also carries a sign, an arrow glyph and a text label — and the ◑ toggle swaps both
-poles for a blue/orange pair measuring ΔE 24.7 (light) and 26.8 (dark). The strategy-vs-benchmark
-series use that same validated pair.
+<img src="docs/media/dashboard-light.jpg" width="100%" alt="The same dashboard in light theme">
 
-**Scales adapt to the data.** The price chart and the equity curve both switch to logarithmic
-automatically when the span demands it (8× for price, 20× for portfolio value). Across 45 years of
-AAPL a linear axis flattens the first three decades onto the baseline; on a log axis equal
-percentage moves look equal, which is what compounding actually means.
+**Colour is never the only signal.** The green-up/red-down convention every trader reads
+instinctively fails a colourblind check badly — measured separation between `#0ca30c`
+and `#d03b3b` is ΔE 4.1 under deuteranopia, where 8 is the floor. Rather than abandon
+the convention, every value also carries a sign, an arrow glyph and a text label, and
+the ◑ toggle swaps both poles for a blue/orange pair measuring ΔE 24.7 (light) and 26.8
+(dark). The strategy-vs-benchmark series use that same validated pair.
 
-**Charts get a hover layer by default** — a crosshair with full OHLC and indicator readout on the
-price chart, and a two-series crosshair tooltip on the equity curve.
+**Scales adapt to the data.** Price chart and equity curve both switch to logarithmic
+once the span demands it — 8× for price, 20× for portfolio value. Across 45 years of
+AAPL a linear axis flattens the first three decades onto the baseline; on a log axis
+equal percentage moves look equal, which is what compounding actually means.
+
+**Keyboard first.** `/` focuses search, `1`–`8` switch range, `★` toggles the watchlist.
 
 ---
 
-## Layout
+## How it fits together
 
 ```
+run.py                    One command: venv, deps, server, browser
 Backend/
   app/
-    main.py                 FastAPI app, CORS, router mount
-    core/config.py          Settings, all env-overridable
+    main.py               FastAPI — also serves the built UI when present
     services/
-      market.py             yfinance access, TTL cache, range specs, search, news
-      indicators.py         Indicator maths — every function is causal
-      signals.py            The seven factors, the composite, levels, explanations
-      backtest.py           Bar-by-bar replay with costs and stops
-      assistant.py          Grounded responder + optional Claude
-    api/v1/routes.py        HTTP surface
-Frontend/
-  src/
-    index.css               Design tokens — the validated palette lives here
-    App.jsx                 Layout, state, data fetching
-    lib/                    API client, display formatting
-    hooks/usePrefs.js       Theme, palette, persisted state, CSS-token reader
-    components/             Chart, signal, backtest, watchlist, assistant, …
+      market.py           yfinance access, TTL cache, range specs, search, news
+      indicators.py       Indicator maths — every function is causal
+      signals.py          The seven factors, composite, levels, explanations
+      backtest.py         Bar-by-bar replay with costs and stops
+      assistant.py        Grounded responder + optional Claude
+    api/v1/routes.py      HTTP surface
+  snapshot_demo.py        Freezes the API to JSON for the static demo
+Frontend/src/
+  index.css               Design tokens — the validated palette lives here
+  components/             Chart, signal, backtest, watchlist, assistant
+scripts/package_release.sh  Builds the downloadable zip
 ```
 
-Route handlers are declared `def`, not `async def`, on purpose: each ends in a blocking `yfinance`
-call, so FastAPI runs them in its threadpool where they cannot stall the event loop. Batched
-endpoints fan out across a thread pool on top of that.
+Route handlers are `def`, not `async def`, on purpose: each ends in a blocking
+`yfinance` call, so FastAPI runs them in its threadpool where they can't stall the event
+loop. Batched endpoints fan out across a thread pool on top of that.
 
-### API
+<details>
+<summary><b>API reference</b></summary>
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/v1/meta` | Ranges, factor weights, assistant engine status, disclaimer |
+| `GET /api/v1/meta` | Ranges, factor weights, assistant status, disclaimer |
 | `GET /api/v1/search?q=` | Symbol lookup |
 | `GET /api/v1/quote/{symbol}` | Last price, day move, company facts |
 | `GET /api/v1/analysis/{symbol}?range=&capital=` | Candles, overlays, oscillators, signal, backtest |
 | `GET /api/v1/history/{symbol}?range=` | Candles only |
 | `GET /api/v1/market/overview` | Indices, sector rotation, breadth |
-| `GET /api/v1/watchlist?symbols=` | Batched quotes + mini signals + sparklines |
+| `GET /api/v1/watchlist?symbols=` | Batched quotes, mini signals, sparklines |
 | `GET /api/v1/news/{symbol}` | Recent headlines |
 | `POST /api/v1/chat` | Ask the assistant about a symbol |
 
-Interactive docs at <http://127.0.0.1:8000/docs>.
+Interactive docs at `/docs` while running. Config via `CORS_ORIGINS`, `INDEX_SYMBOLS`,
+`SECTOR_SYMBOLS`, `DEFAULT_WATCHLIST`, `MAX_WORKERS`, `STATIC_DIR`, `ANTHROPIC_API_KEY`.
 
-### Configuration
+</details>
 
-Everything has a working default. Override with environment variables: `CORS_ORIGINS`,
-`INDEX_SYMBOLS`, `SECTOR_SYMBOLS`, `DEFAULT_WATCHLIST`, `MAX_WORKERS`, `ANTHROPIC_API_KEY`, and
-`VITE_API_TARGET` (frontend, if the backend is not on `127.0.0.1:8000`).
+Search covers equities, ETFs, indices (`^GSPC`), crypto (`BTC-USD`), FX (`EURUSD=X`)
+and futures (`GC=F`) — anything Yahoo Finance resolves.
 
 ---
 
 ## Limitations
 
-- **Prices are delayed.** Yahoo Finance is free and not a real-time feed. Do not trade off the
-  last tick shown here.
-- **Long-only.** A "sell" signal means *exit*, not *go short*.
-- **The backtest is single-symbol and unlevered**, with no dividends beyond what the adjusted
-  close already includes, no taxes, and no sizing beyond all-in / all-out.
-- **A backtest always flatters itself.** It never misses a fill, panics, or changes its mind.
-- **Few trades.** A trend-following overlay makes a handful of round trips a year, so on most
-  ranges the sample is too small to separate an edge from luck. The app labels this rather than
-  glossing over it.
+- **Prices are delayed.** Yahoo Finance is free and not a real-time feed. Don't trade
+  off the last tick shown here.
+- **Long-only.** A sell signal means *exit*, not *go short*.
+- **Single-symbol, unlevered**, no dividends beyond what the adjusted close includes, no
+  taxes, no sizing beyond all-in/all-out.
+- **A backtest always flatters itself.** It never misses a fill, panics, or changes its
+  mind.
+- **Few trades.** A trend-following overlay makes a handful of round trips a year, so on
+  most ranges the sample is too small to prove anything. The app labels this.
 
 ## Disclaimer
 
-Educational technical analysis, not financial advice. These signals describe what indicators say
-about past price action — they do not predict the future, and no backtest result implies a future
-one. Never risk money you cannot afford to lose.
+Educational technical analysis, **not financial advice**. These signals describe what
+indicators say about past price action. They do not predict the future, and no backtest
+result implies a future one. Never risk money you cannot afford to lose.
 
 ## Licence
 
-MIT — see `LICENSE`.
+MIT — see [LICENSE](LICENSE).

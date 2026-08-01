@@ -1,17 +1,17 @@
-# Python
-.venv/
-venv/
+
 __pycache__/
-*.py[cod]
-.env
-
-# Node
-node_modules/
-dist/
-*.local
-
-# Editors / OS
 .DS_Store
+.env
 .idea/
+.venv/
 .vscode/
+*.local
+*.py[cod]
+# Editors / OS
+# Node
+# Python
+Backend/static/
 dist-demo/
+dist/
+node_modules/
+venv/
