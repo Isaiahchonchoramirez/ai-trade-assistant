@@ -9,7 +9,8 @@
 Seven technical factors, scored and explained — then backtested against buy-and-hold
 so you can see whether the logic ever actually worked.
 
-[![Download](https://img.shields.io/badge/Download-v1.0.0%20·%20free-0ca30c?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Isaiahchonchoramirez/ai-trade-assistant/releases/latest)
+[![Download for Mac](https://img.shields.io/badge/Download-macOS%20app-0ca30c?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Isaiahchonchoramirez/ai-trade-assistant/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download-Windows%20%2F%20Linux-2a78d6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Isaiahchonchoramirez/ai-trade-assistant/releases/latest)
 [![Live demo](https://img.shields.io/badge/Live%20demo-try%20it%20now-2a78d6?style=for-the-badge)](https://isaiahchonchoramirez.github.io/isaiahramirezdev/trade-assistant/)
 
 <sub>Python 3.10+ · no API keys · no account · MIT</sub>
@@ -24,24 +25,39 @@ so you can see whether the logic ever actually worked.
 
 ## Get it running
 
-**Download and double-click.** No build step, no Node, no configuration.
+**Download and double-click.** No terminal, no build step, no configuration.
 
 <div align="center">
 
-### [⬇ Download v1.0.0 (180 KB)](https://github.com/Isaiahchonchoramirez/ai-trade-assistant/releases/latest)
+### [⬇ Download the app — free](https://github.com/Isaiahchonchoramirez/ai-trade-assistant/releases/latest)
 
 </div>
 
-| Platform | What to do |
-|---|---|
-| **macOS** | Unzip → double-click `Start Trade Assistant.command`<br><sub>If macOS blocks it: right-click → Open → Open.</sub> |
-| **Windows** | Unzip → double-click `start.bat` |
-| **Linux** | Unzip → `./start.sh` |
+| You have | Get | Then |
+|---|---|---|
+| **A Mac** | `Trade-Assistant-macOS.zip` | Drag **Trade Assistant** to Applications, double-click |
+| **Windows** | `ai-trade-assistant.zip` | Unzip, double-click `install-windows.bat` — puts it in your Start Menu |
+| **Linux** | `ai-trade-assistant.zip` | Unzip, run `./start.sh` |
 
-First run takes about a minute while it builds its own environment. After that it
-starts in a couple of seconds and opens your browser automatically. You need
-[Python 3.10+](https://www.python.org/downloads/) and an internet connection —
-nothing else.
+You need [Python 3.10+](https://www.python.org/downloads/) and an internet connection.
+Nothing else. First run takes about a minute to set itself up; after that it opens in a
+couple of seconds and launches your browser on its own.
+
+**Uninstalling** is a double-click too — `Uninstall Trade Assistant` on macOS,
+`uninstall-windows.bat` on Windows. Both remove the private environment (~180 MB), not
+just the shortcut.
+
+> [!IMPORTANT]
+> **On a Mac the first launch shows a security warning.** That is expected for any app
+> not distributed through the App Store, and it is about the missing signature rather
+> than anything the app does. Once:
+>
+> 1. Double-click **Trade Assistant** → **Done**
+> 2. **System Settings → Privacy & Security**
+> 3. Scroll to the bottom → **Open Anyway** → enter your password
+>
+> Every launch after that is a plain double-click. Making the prompt disappear entirely
+> needs a paid Apple Developer account; this app is free, so it ships unsigned.
 
 <details>
 <summary><b>Or run from source</b></summary>
@@ -115,8 +131,12 @@ separate an edge from luck.
 
 Ask in plain language — *why that signal?*, *what's my risk?*, *how much should I buy?*
 Answers are computed from the same indicator values on screen, so it **cannot invent a
-number**. No API key needed. Set `ANTHROPIC_API_KEY` and open-ended questions route
-through Claude instead, grounded on the same data.
+number**. No API key needed.
+
+For conversational replies, click **Connect Claude** under the assistant and paste an
+Anthropic key. It is checked before being saved, kept on your machine only and readable
+just by you, never logged, and never sent anywhere but Anthropic — *Disconnect* removes
+it. Setting `ANTHROPIC_API_KEY` in the environment still works too.
 
 ---
 
